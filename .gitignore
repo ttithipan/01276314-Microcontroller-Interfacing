@@ -1,5 +1,6 @@
 # Virtual environment
 /.venv
+/tmp
 
 # macOS
 .DS_Store
