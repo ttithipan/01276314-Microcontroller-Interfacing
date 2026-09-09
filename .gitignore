@@ -1,0 +1,17 @@
+# Virtual environment
+/.venv
+
+# macOS
+.DS_Store
+
+# STM32CubeIDE build outputs (regenerated on build; source only is tracked)
+Debug/
+Release/
+*.o
+*.d
+*.su
+*.cyclo
+*.elf
+*.map
+*.list
+*.lnp
