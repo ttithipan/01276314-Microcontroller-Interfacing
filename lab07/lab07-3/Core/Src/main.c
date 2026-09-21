@@ -41,7 +41,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 
-TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim1;
 volatile uint8_t red_level = 0;
 volatile uint8_t green_level = 0;
 volatile uint8_t blue_level = 0;
@@ -58,7 +58,6 @@ PCD_HandleTypeDef hpcd_USB_OTG_FS;
 void SystemClock_Config(void);
 static void MPU_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_TIM2_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_USB_OTG_FS_PCD_Init(void);
 /* USER CODE BEGIN PFP */
@@ -102,33 +101,48 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_TIM2_Init();
   MX_USART3_UART_Init();
   MX_USB_OTG_FS_PCD_Init();
   /* USER CODE BEGIN 2 */
-  __HAL_RCC_TIM3_CLK_ENABLE();
-  __HAL_RCC_TIM4_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_TIM1_CLK_ENABLE();
+  __HAL_RCC_GPIOE_CLK_ENABLE();
+
+  /* Configure TIM1 to generate PWM on channels 1/2/3.
+     PE9  = TIM1_CH1 (Blue)
+     PE11 = TIM1_CH2 (Green)
+     PE13 = TIM1_CH3 (Red)
+  */
+  htim1.Instance = TIM1;
+  htim1.Init.Prescaler = 108-1;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim1.Init.Period = 10000-1;
+  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim1.Init.RepetitionCounter = 0;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  HAL_TIM_PWM_Init(&htim1);
+
+  TIM_OC_InitTypeDef sConfigOC = {0};
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1);
+  HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_2);
+  HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_3);
+
   GPIO_InitTypeDef rgb_gpio = {0};
-  rgb_gpio.Pin = GPIO_PIN_4 | GPIO_PIN_6;
+  rgb_gpio.Pin = GPIO_PIN_9 | GPIO_PIN_11 | GPIO_PIN_13;
   rgb_gpio.Mode = GPIO_MODE_AF_PP;
   rgb_gpio.Pull = GPIO_NOPULL;
   rgb_gpio.Speed = GPIO_SPEED_FREQ_LOW;
-  rgb_gpio.Alternate = GPIO_AF2_TIM3;
-  HAL_GPIO_Init(GPIOB, &rgb_gpio);
-  rgb_gpio.Pin = GPIO_PIN_6;
-  rgb_gpio.Alternate = GPIO_AF2_TIM4;
-  HAL_GPIO_Init(GPIOB, &rgb_gpio);
-  TIM3->PSC = 108-1; TIM3->ARR = 10000-1; TIM3->CCR1 = 0;
-  TIM3->CCMR1 = (6U << TIM_CCMR1_OC1M_Pos) | TIM_CCMR1_OC1PE;
-  TIM3->CCER = TIM_CCER_CC1E; TIM3->CR1 = TIM_CR1_ARPE;
-  TIM4->PSC = 108-1; TIM4->ARR = 10000-1; TIM4->CCR1 = 0;
-  TIM4->CCMR1 = (6U << TIM_CCMR1_OC1M_Pos) | TIM_CCMR1_OC1PE;
-  TIM4->CCER = TIM_CCER_CC1E; TIM4->CR1 = TIM_CR1_ARPE;
-  TIM3->EGR = TIM_EGR_UG; TIM4->EGR = TIM_EGR_UG;
-  TIM3->CR1 |= TIM_CR1_CEN; TIM4->CR1 |= TIM_CR1_CEN;
-  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
+  rgb_gpio.Alternate = GPIO_AF1_TIM1;
+  HAL_GPIO_Init(GPIOE, &rgb_gpio);
 
+  /* Advanced timer: enable main output then start all three channels */
+  __HAL_TIM_MOE_ENABLE(&htim1);
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -141,12 +155,12 @@ int main(void)
     uint8_t key;
     if (HAL_UART_Receive(&huart3, &key, 1, 0) == HAL_OK)
     {
-      if (key == 'r') red_level = (red_level + 20) % 120;
-      if (key == 'g') green_level = (green_level + 20) % 120;
-      if (key == 'b') blue_level = (blue_level + 20) % 120;
-      htim2.Instance->CCR3 = (10000-1) * red_level / 100;
-      TIM3->CCR1 = (10000-1) * green_level / 100;
-      TIM4->CCR1 = (10000-1) * blue_level / 100;
+      if (key == 'r') red_level = (red_level >= 100) ? 0 : red_level + 20;
+      if (key == 'g') green_level = (green_level >= 100) ? 0 : green_level + 20;
+      if (key == 'b') blue_level = (blue_level >= 100) ? 0 : blue_level + 20;
+      htim1.Instance->CCR3 = (10000-1) * red_level / 100;
+      htim1.Instance->CCR2 = (10000-1) * green_level / 100;
+      htim1.Instance->CCR1 = (10000-1) * blue_level / 100;
     }
   }
   /* USER CODE END 3 */
@@ -207,65 +221,6 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-}
-
-/**
-  * @brief TIM2 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM2_Init(void)
-{
-
-  /* USER CODE BEGIN TIM2_Init 0 */
-
-  /* USER CODE END TIM2_Init 0 */
-
-  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-  TIM_OC_InitTypeDef sConfigOC = {0};
-
-  /* USER CODE BEGIN TIM2_Init 1 */
-
-  /* USER CODE END TIM2_Init 1 */
-  htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 108-1;
-  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 10000-1;
-  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 0;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM2_Init 2 */
-
-  /* USER CODE END TIM2_Init 2 */
-  HAL_TIM_MspPostInit(&htim2);
-
 }
 
 /**

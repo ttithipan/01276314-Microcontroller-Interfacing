@@ -16,3 +16,10 @@ Release/
 *.map
 *.list
 *.lnp
+/picture
+/project
+# Team photo pixels, generated from /picture by lab08/tools/make_team_photo.py.
+# The script and the team_photo.h dimensions header are committed; the bitmap
+# itself is not, so the photo is never pushed.  Rerun the script after cloning:
+#   python3 lab08/tools/make_team_photo.py
+/lab08/*/Core/Src/team_photo.c
