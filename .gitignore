@@ -23,3 +23,4 @@ Release/
 # itself is not, so the photo is never pushed.  Rerun the script after cloning:
 #   python3 lab08/tools/make_team_photo.py
 /lab08/*/Core/Src/team_photo.c
+LABS-SUMMARY.md
