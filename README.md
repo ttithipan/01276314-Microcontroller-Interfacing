@@ -2,6 +2,10 @@
 
 ## Repository Structure
 ```
+lab01/
+  docs/               Lab 1 assignment (2026-Lab-01-LED)
+lab02/
+  docs/               Lab 2 assignment (2026-Lab-02-GPIO)
 lab03/
   docs/               Lab 3 assignment (2026-Lab-03-UART)
   lab03-1/            experiment 1 Hello World
